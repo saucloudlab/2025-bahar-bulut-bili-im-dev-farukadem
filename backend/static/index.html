@@ -23,7 +23,6 @@
         .navbar h1 { margin: 0; font-size: 24px; color: var(--primary); }
         .nav-actions { display: flex; align-items: center; gap: 15px; }
         
-        /* Bildirim Kutusu CSS */
         .notification-wrapper { position: relative; }
         .notification-bell { cursor: pointer; font-size: 24px; margin-right: 10px;}
         .badge { position: absolute; top: -5px; right: 0; background: #ef4444; color: white; border-radius: 50%; padding: 2px 6px; font-size: 12px; font-weight: bold; display: none;}
@@ -47,7 +46,6 @@
         .specs { background: var(--bg); padding: 15px; border-radius: 12px; margin-bottom: 20px; }
         .specs p { margin: 5px 0; font-size: 14px; }
         
-        /* Yorumlar Alanı */
         .comments-section { flex-grow: 1; overflow-y: auto; margin-bottom: 10px; }
         .comment { border-bottom: 1px solid #e5e7eb; padding: 10px 0; font-size: 14px; }
         .add-comment { margin-top: 10px; display: flex; gap: 10px; }
@@ -134,7 +132,6 @@
         import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
-        // --- AUTH & HAFIZA ---
         let isLoginMode = true;
         let currentOpenModelId = null; // Yorum atarken modeli bilmemiz için
 
@@ -164,7 +161,6 @@
         };
         window.logout = () => { localStorage.removeItem('aktif_kullanici_id'); location.reload(); };
 
-        // --- BİLDİRİMLER GERÇEK ZAMANLI ---
         window.checkNotifications = async () => {
             const userId = localStorage.getItem('aktif_kullanici_id');
             if(!userId) return;
@@ -189,7 +185,6 @@
             dd.style.display = dd.style.display === 'block' ? 'none' : 'block';
         };
 
-        // --- MODEL YÜKLEME (Gerçek Veri) ---
         window.openUploadModal = () => document.getElementById('upload-modal').style.display = 'flex';
         window.closeUploadModal = () => document.getElementById('upload-modal').style.display = 'none';
 
@@ -213,7 +208,6 @@
             btn.disabled = false; btn.innerText = "🚀 Modeli Buluta Yükle";
         };
 
-        // --- YORUM ATMA ---
         window.postComment = async () => {
             const text = document.getElementById('comment-input').value;
             const userId = localStorage.getItem('aktif_kullanici_id');
@@ -230,7 +224,6 @@
             setTimeout(() => document.getElementById(`card-${currentOpenModelId}`).click(), 200); // Modalı yeniden aç (Tricky çözüm)
         };
 
-        // --- 3D MOTORS ---
         const fbxLoader = new FBXLoader();
         const gltfLoader = new GLTFLoader(); 
 
@@ -300,7 +293,6 @@
             document.getElementById('modal-usage').innerText = model.usage_area;
             document.getElementById('modal-type').innerText = model.file_url.split('.').pop().toUpperCase();
             
-            // Yorumları Çiz
             const commentBox = document.getElementById('modal-comments');
             commentBox.innerHTML = "";
             if(model.comments.length === 0) commentBox.innerHTML = "<p style='font-size:12px; color:gray;'>Henüz yorum yok. İlk yorumu sen yap!</p>";
@@ -308,7 +300,6 @@
                 commentBox.innerHTML += `<div class="comment"><strong>Kullanıcı #${c.user_id}</strong><span>${c.text}</span></div>`;
             });
 
-            // 3D Engine Init
             if(!mainRenderer) {
                 mainScene = new THREE.Scene(); mainScene.background = new THREE.Color(0xffc0cb);
                 mainScene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 1.0));
