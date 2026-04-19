@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Malzeme İnceleme</title>
+    <style>
+        :root { --primary: #4f46e5; --primary-hover: #4338ca; --bg: #f3f4f6; --card-bg: #ffffff; --text-main: #1f2937; --text-muted: #6b7280; }
+        body { font-family: 'Inter', 'Segoe UI', sans-serif; background-color: var(--bg); margin: 0; color: var(--text-main); }
+        * { box-sizing: border-box; }
+
+        #auth-screen { display: flex; height: 100vh; align-items: center; justify-content: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .auth-box { background: white; padding: 40px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); width: 100%; max-width: 400px; text-align: center; }
+        .auth-box h2 { margin-top: 0; }
+        .input-group { margin-bottom: 15px; text-align: left; }
+        .input-group label { display: block; font-size: 14px; margin-bottom: 5px; color: var(--text-muted); font-weight: bold; }
+        .input-group input, .input-group select { width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 15px; outline: none; }
+        .btn { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; font-weight: 600; }
+        .toggle-auth { margin-top: 15px; font-size: 14px; color: var(--primary); cursor: pointer; }
+
+        #app-screen { display: none; }
+        .navbar { background: white; padding: 15px 40px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 10px rgba(0,0,0,0.05);}
+        .navbar h1 { margin: 0; font-size: 24px; color: var(--primary); }
+        .nav-actions { display: flex; align-items: center; gap: 15px; }
+        
+        /* Bildirim Kutusu CSS */
+        .notification-wrapper { position: relative; }
+        .notification-bell { cursor: pointer; font-size: 24px; margin-right: 10px;}
+        .badge { position: absolute; top: -5px; right: 0; background: #ef4444; color: white; border-radius: 50%; padding: 2px 6px; font-size: 12px; font-weight: bold; display: none;}
+        .notif-dropdown { display: none; position: absolute; right: 0; top: 35px; width: 300px; background: white; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.2); z-index: 200; max-height: 300px; overflow-y: auto;}
+        .notif-item { padding: 15px; border-bottom: 1px solid #eee; font-size: 14px; color: var(--text-main); }
+        
+        .container { max-width: 1200px; margin: 40px auto; padding: 0 20px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 30px; }
+        .card { background: var(--card-bg); border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); display: flex; flex-direction: column; cursor: pointer;}
+        .card-preview { height: 250px; background: #ffc0cb; position: relative; overflow: hidden;}
+        .card-preview canvas { display: block; width: 100%; height: 100%; }
+        .card-loading { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #1f2937; font-weight:bold;}
+        .card-content { padding: 20px; background: white; z-index: 20; position: relative;}
+        
+        #detail-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; align-items: center; justify-content: center; }
+        .modal-content { background: white; width: 90%; max-width: 1000px; height: 85vh; border-radius: 20px; display: flex; overflow: hidden; position: relative; }
+        .close-modal { position: absolute; top: 15px; right: 20px; font-size: 30px; cursor: pointer; color: #9ca3af; z-index: 10;}
+        .modal-left { width: 60%; position: relative; }
+        #canvas-container { width: 100%; height: 100%; }
+        .modal-right { width: 40%; padding: 30px; display: flex; flex-direction: column; overflow-y: auto; }
+        .specs { background: var(--bg); padding: 15px; border-radius: 12px; margin-bottom: 20px; }
+        .specs p { margin: 5px 0; font-size: 14px; }
+        
+        /* Yorumlar Alanı */
+        .comments-section { flex-grow: 1; overflow-y: auto; margin-bottom: 10px; }
+        .comment { border-bottom: 1px solid #e5e7eb; padding: 10px 0; font-size: 14px; }
+        .add-comment { margin-top: 10px; display: flex; gap: 10px; }
+        .add-comment input { flex-grow: 1; padding: 10px; border: 1px solid #d1d5db; border-radius: 8px; }
+        .add-comment button { padding: 10px 15px; background: var(--text-main); color: white; border: none; border-radius: 8px; cursor: pointer; }
+
+        #upload-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 2000; align-items: center; justify-content: center; }
+        .upload-box { background: white; padding: 30px; border-radius: 16px; width: 90%; max-width: 500px; position: relative; }
+        .close-upload { position: absolute; top: 15px; right: 20px; font-size: 24px; cursor: pointer; color: #9ca3af; }
+    </style>
+    <script type="importmap"> { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js", "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/" } } </script>
+</head>
+<body>
+
+    <div id="auth-screen">
+        <div class="auth-box">
+            <h2 id="auth-title">Giriş Yap</h2>
+            <div class="input-group"><label>E-Posta</label><input type="email" id="email"></div>
+            <div class="input-group"><label>Şifre</label><input type="password" id="password"></div>
+            <button class="btn" id="auth-btn" onclick="handleAuth()">Giriş Yap</button>
+            <div class="toggle-auth" onclick="toggleAuthMode()" id="auth-toggle-text">Hesabın yok mu? Kayıt Ol</div>
+        </div>
+    </div>
+
+    <div id="app-screen">
+        <nav class="navbar">
+            <h1>🧊 3D Malzeme İnceleme</h1>
+            <div class="nav-actions">
+                <div class="notification-wrapper">
+                    <div class="notification-bell" onclick="toggleNotifications()">🔔<span class="badge" id="notif-count">0</span></div>
+                    <div class="notif-dropdown" id="notif-dropdown"></div>
+                </div>
+                <button class="btn" style="padding: 8px 15px; background: #10b981;" onclick="openUploadModal()">➕ Model Ekle</button>
+                <button class="btn" style="padding: 8px 15px; background: #ef4444;" onclick="logout()">Çıkış</button>
+            </div>
+        </nav>
+        <div class="container"><div class="grid" id="model-listesi"></div></div>
+    </div>
+
+    <div id="upload-modal">
+        <div class="upload-box">
+            <span class="close-upload" onclick="closeUploadModal()">&times;</span>
+            <h2 style="margin-top:0; color: var(--primary);">Yeni Model Yükle</h2>
+            <div class="input-group"><label>Model Adı</label><input type="text" id="upload-name"></div>
+            <div style="display:flex; gap:10px;">
+                <div class="input-group" style="flex:1;"><label>Kullanım Alanı</label>
+                    <select id="upload-usage"><option>Mimari</option><option>Oyun / AR-VR</option><option>Endüstriyel Tasarım</option></select>
+                </div>
+                <div class="input-group" style="flex:1;"><label>Ölçüler</label><input type="text" id="upload-dimensions" placeholder="Örn: 100x50x50 cm"></div>
+            </div>
+            <div class="input-group"><label>3D Dosya Seç (.fbx veya .glb)</label><input type="file" id="upload-file" accept=".fbx, .glb, .gltf"></div>
+            <button class="btn" id="upload-submit-btn" onclick="submitModel()">🚀 Modeli Buluta Yükle</button>
+        </div>
+    </div>
+
+    <div id="detail-modal">
+        <div class="modal-content">
+            <div class="close-modal" onclick="closeModal()">&times;</div>
+            <div class="modal-left">
+                <div id="canvas-container"><p id="loading-text" style="color: #1f2937; font-weight: bold; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">Yükleniyor...</p></div>
+            </div>
+            <div class="modal-right">
+                <h2 id="modal-title" style="margin-top: 0;">Model</h2>
+                <div class="specs">
+                    <p><strong>Dosya Tipi:</strong> <span id="modal-type"></span></p>
+                    <p><strong>Ölçüler:</strong> <span id="modal-dimensions"></span></p>
+                    <p><strong>Kullanım Alanı:</strong> <span id="modal-usage"></span></p>
+                </div>
+                
+                <h3>Yorumlar</h3>
+                <div class="comments-section" id="modal-comments"></div>
+                
+                <div class="add-comment">
+                    <input type="text" id="comment-input" placeholder="Yorum yaz...">
+                    <button onclick="postComment()">Gönder</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+        // --- AUTH & HAFIZA ---
+        let isLoginMode = true;
+        let currentOpenModelId = null; // Yorum atarken modeli bilmemiz için
+
+        window.toggleAuthMode = () => {
+            isLoginMode = !isLoginMode;
+            document.getElementById('auth-title').innerText = isLoginMode ? "Giriş Yap" : "Kayıt Ol";
+            document.getElementById('auth-btn').innerText = isLoginMode ? "Giriş Yap" : "Hesap Oluştur";
+        };
+
+        window.handleAuth = async () => {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            try {
+                let res = isLoginMode ? 
+                    await fetch(`/login/?email=${email}&sifre=${password}`, { method: 'POST' }) :
+                    await fetch('/users/', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) });
+                
+                if(res.ok) {
+                    const data = await res.json();
+                    localStorage.setItem('aktif_kullanici_id', isLoginMode ? data.kullanici_id : data.id);
+                    document.getElementById('auth-screen').style.display = 'none';
+                    document.getElementById('app-screen').style.display = 'block';
+                    loadModels();
+                    checkNotifications(); // Bildirimleri getir
+                } else { alert("Hata oluştu."); }
+            } catch (err) { alert("Sunucu hatası."); }
+        };
+        window.logout = () => { localStorage.removeItem('aktif_kullanici_id'); location.reload(); };
+
+        // --- BİLDİRİMLER GERÇEK ZAMANLI ---
+        window.checkNotifications = async () => {
+            const userId = localStorage.getItem('aktif_kullanici_id');
+            if(!userId) return;
+            const res = await fetch(`/notifications/${userId}`);
+            const data = await res.json();
+            
+            const dropdown = document.getElementById('notif-dropdown');
+            dropdown.innerHTML = "";
+            if(data.length > 0) {
+                document.getElementById('notif-count').style.display = 'block';
+                document.getElementById('notif-count').innerText = data.length;
+                data.forEach(n => {
+                    dropdown.innerHTML += `<div class="notif-item">📬 ${n.message}</div>`;
+                });
+            } else {
+                dropdown.innerHTML = `<div class="notif-item">Hiç bildiriminiz yok.</div>`;
+            }
+        };
+
+        window.toggleNotifications = () => {
+            const dd = document.getElementById('notif-dropdown');
+            dd.style.display = dd.style.display === 'block' ? 'none' : 'block';
+        };
+
+        // --- MODEL YÜKLEME (Gerçek Veri) ---
+        window.openUploadModal = () => document.getElementById('upload-modal').style.display = 'flex';
+        window.closeUploadModal = () => document.getElementById('upload-modal').style.display = 'none';
+
+        window.submitModel = async () => {
+            const userId = localStorage.getItem('aktif_kullanici_id');
+            const fileInput = document.getElementById('upload-file');
+            
+            const formData = new FormData();
+            formData.append("name", document.getElementById('upload-name').value);
+            formData.append("dimensions", document.getElementById('upload-dimensions').value || "Bilinmiyor");
+            formData.append("usage_area", document.getElementById('upload-usage').value);
+            formData.append("file", fileInput.files[0]);
+
+            const btn = document.getElementById('upload-submit-btn');
+            btn.disabled = true; btn.innerText = "Yükleniyor...";
+
+            await fetch(`/upload-model/${userId}`, { method: 'POST', body: formData });
+            alert("Model eklendi!");
+            closeUploadModal();
+            loadModels();
+            btn.disabled = false; btn.innerText = "🚀 Modeli Buluta Yükle";
+        };
+
+        // --- YORUM ATMA ---
+        window.postComment = async () => {
+            const text = document.getElementById('comment-input').value;
+            const userId = localStorage.getItem('aktif_kullanici_id');
+            if(!text) return;
+
+            await fetch(`/models/${currentOpenModelId}/comments?user_id=${userId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: text })
+            });
+
+            document.getElementById('comment-input').value = "";
+            loadModels(); // Yorumların güncellenmesi için modelleri yeniden çek
+            setTimeout(() => document.getElementById(`card-${currentOpenModelId}`).click(), 200); // Modalı yeniden aç (Tricky çözüm)
+        };
+
+        // --- 3D MOTORS ---
+        const fbxLoader = new FBXLoader();
+        const gltfLoader = new GLTFLoader(); 
+
+        function setupModel(object, isFbx, scene) {
+            if(isFbx) object.rotation.x = -Math.PI / 2; 
+            const box = new THREE.Box3().setFromObject(object);
+            const center = box.getCenter(new THREE.Vector3());
+            const maxDim = Math.max(...box.getSize(new THREE.Vector3()).toArray());
+            object.scale.setScalar(120 / maxDim);
+            object.position.sub(center.multiplyScalar(120 / maxDim));
+            scene.add(object); return object;
+        }
+
+        function createMini3DViewer(containerId, url) {
+            const container = document.getElementById(containerId);
+            const scene = new THREE.Scene(); scene.background = new THREE.Color(0xffc0cb); 
+            scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 1.0));
+            
+            const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 1, 2000);
+            camera.position.set(150, 150, 250);
+            const renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            container.appendChild(renderer.domElement);
+            
+            const controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableZoom = false;
+
+            function animate() { requestAnimationFrame(animate); controls.update(); renderer.render(scene, camera); }
+
+            if(url.toLowerCase().endsWith('.fbx')) {
+                fbxLoader.load(url, obj => { setupModel(obj, true, scene); document.getElementById(`loading-${containerId}`).style.display='none'; animate(); });
+            } else {
+                gltfLoader.load(url, gltf => { setupModel(gltf.scene, false, scene); document.getElementById(`loading-${containerId}`).style.display='none'; animate(); });
+            }
+        }
+
+        function loadModels() {
+            fetch('/models/').then(res => res.json()).then(modeller => {
+                const kutu = document.getElementById('model-listesi'); kutu.innerHTML = "";
+                modeller.forEach(model => {
+                    const kart = document.createElement('div');
+                    kart.className = 'card'; kart.id = `card-${model.id}`;
+                    const previewId = `preview-${model.id}`;
+                    
+                    kart.innerHTML = `
+                        <div class="card-preview" id="${previewId}"><div class="card-loading" id="loading-${previewId}">3D Yükleniyor...</div></div>
+                        <div class="card-content">
+                            <h3 style="margin:0 0 5px 0;">${model.name}</h3>
+                            <p style="margin:0; font-size:12px; color:gray;">Yorumlar: ${model.comments.length}</p>
+                        </div>
+                    `;
+                    kart.onclick = () => openModal(model);
+                    kutu.appendChild(kart);
+                    setTimeout(() => createMini3DViewer(previewId, model.file_url), 100);
+                });
+            });
+        }
+
+        let mainScene, mainCamera, mainRenderer, mainControls, current3DModel;
+        const modalContainer = document.getElementById('canvas-container');
+
+        window.openModal = (model) => {
+            currentOpenModelId = model.id;
+            document.getElementById('detail-modal').style.display = 'flex';
+            document.getElementById('modal-title').innerText = model.name;
+            document.getElementById('modal-dimensions').innerText = model.dimensions;
+            document.getElementById('modal-usage').innerText = model.usage_area;
+            document.getElementById('modal-type').innerText = model.file_url.split('.').pop().toUpperCase();
+            
+            // Yorumları Çiz
+            const commentBox = document.getElementById('modal-comments');
+            commentBox.innerHTML = "";
+            if(model.comments.length === 0) commentBox.innerHTML = "<p style='font-size:12px; color:gray;'>Henüz yorum yok. İlk yorumu sen yap!</p>";
+            model.comments.forEach(c => {
+                commentBox.innerHTML += `<div class="comment"><strong>Kullanıcı #${c.user_id}</strong><span>${c.text}</span></div>`;
+            });
+
+            // 3D Engine Init
+            if(!mainRenderer) {
+                mainScene = new THREE.Scene(); mainScene.background = new THREE.Color(0xffc0cb);
+                mainScene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 1.0));
+                mainCamera = new THREE.PerspectiveCamera(45, modalContainer.clientWidth / modalContainer.clientHeight, 1, 2000);
+                mainCamera.position.set(100, 150, 250);
+                mainRenderer = new THREE.WebGLRenderer({ antialias: true });
+                mainRenderer.setSize(modalContainer.clientWidth, modalContainer.clientHeight);
+                modalContainer.appendChild(mainRenderer.domElement);
+                mainControls = new OrbitControls(mainCamera, mainRenderer.domElement);
+                function animateMain() { requestAnimationFrame(animateMain); if(current3DModel) current3DModel.rotation.y += 0.005; mainRenderer.render(mainScene, mainCamera); }
+                animateMain();
+            }
+            
+            if(current3DModel) mainScene.remove(current3DModel);
+            document.getElementById('loading-text').style.display = 'block';
+
+            if(model.file_url.toLowerCase().endsWith('.fbx')) {
+                fbxLoader.load(model.file_url, obj => { current3DModel = setupModel(obj, true, mainScene); document.getElementById('loading-text').style.display='none'; });
+            } else {
+                gltfLoader.load(model.file_url, gltf => { current3DModel = setupModel(gltf.scene, false, mainScene); document.getElementById('loading-text').style.display='none'; });
+            }
+        };
+
+        window.closeModal = () => document.getElementById('detail-modal').style.display = 'none';
+    </script>
+</body>
+</html>
